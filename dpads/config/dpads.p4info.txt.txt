@@ -1,0 +1,149 @@
+p4info {
+  package_info {
+    arch: "v1model"
+  }
+
+  tables {
+    preamble {
+      id: 33554433
+      name: "ipv4_lpm"
+      alias: "ipv4_lpm"
+    }
+    match_fields {
+      id: 1
+      name: "hdr.ipv4.dstAddr"
+      bitwidth: 32
+      match_type: LPM
+    }
+    action_refs {
+      id: 16777217
+    }
+    action_refs {
+      id: 16777218
+    }
+    size: 1024
+  }
+
+  actions {
+    preamble {
+      id: 16777217
+      name: "ipv4_forward"
+      alias: "ipv4_forward"
+    }
+    params {
+      id: 1
+      name: "dst_mac"
+      bitwidth: 48
+    }
+    params {
+      id: 2
+      name: "port"
+      bitwidth: 9
+    }
+  }
+
+  actions {
+    preamble {
+      id: 16777218
+      name: "drop"
+      alias: "drop"
+    }
+  }
+
+  controller_packet_metadata {
+    preamble {
+      id: 1
+      name: "do_disagg"
+      alias: "do_disagg"
+    }
+    metadata {
+      id: 1
+      name: "do_disagg"
+      bitwidth: 1
+    }
+  }
+
+  headers {
+    preamble {
+      id: 1
+      name: "ethernet"
+    }
+    fields {
+      id: 1
+      name: "dstAddr"
+      bitwidth: 48
+    }
+    fields {
+      id: 2
+      name: "srcAddr"
+      bitwidth: 48
+    }
+    fields {
+      id: 3
+      name: "ethType"
+      bitwidth: 16
+    }
+  }
+
+  headers {
+    preamble {
+      id: 2
+      name: "ipv4"
+    }
+    fields {
+      id: 1
+      name: "version"
+      bitwidth: 4
+    }
+    fields {
+      id: 2
+      name: "ihl"
+      bitwidth: 4
+    }
+    fields {
+      id: 3
+      name: "srcAddr"
+      bitwidth: 32
+    }
+    fields {
+      id: 4
+      name: "dstAddr"
+      bitwidth: 32
+    }
+    fields {
+      id: 5
+      name: "protocol"
+      bitwidth: 8
+    }
+  }
+
+  headers {
+    preamble {
+      id: 3
+      name: "custom_iot"
+    }
+    fields {
+      id: 1
+      name: "device_id"
+      bitwidth: 16
+    }
+    fields {
+      id: 2
+      name: "payload_type"
+      bitwidth: 8
+    }
+    fields {
+      id: 3
+      name: "timestamp"
+      bitwidth: 32
+    }
+  }
+
+  pipelines {
+    name: "ingress"
+  }
+
+  pipelines {
+    name: "egress"
+  }
+}

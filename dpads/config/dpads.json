@@ -1,0 +1,140 @@
+{
+  "target": "bmv2",
+  "p4_version": "16",
+  "program": "dpads",
+  "pipeline_layout": {
+    "ingress": {
+      "controls": ["IngressImpl"],
+      "tables": [
+        {
+          "name": "ipv4_lpm",
+          "key": [
+            {
+              "match_type": "lpm",
+              "target": "hdr.ipv4.dstAddr",
+              "bitwidth": 32
+            }
+          ],
+          "actions": [
+            {
+              "name": "ipv4_forward",
+              "parameters": [
+                {
+                  "name": "dst_mac",
+                  "bitwidth": 48
+                },
+                {
+                  "name": "port",
+                  "bitwidth": 9
+                }
+              ]
+            },
+            {
+              "name": "drop",
+              "parameters": []
+            }
+          ]
+        }
+      ]
+    },
+    "egress": {
+      "controls": ["EgressImpl"]
+    }
+  },
+  "headers": {
+    "ethernet": {
+      "fields": {
+        "dstAddr": 48,
+        "srcAddr": 48,
+        "ethType": 16
+      }
+    },
+    "ipv4": {
+      "fields": {
+        "version": 4,
+        "ihl": 4,
+        "diffserv": 8,
+        "totalLen": 16,
+        "identification": 16,
+        "flags": 3,
+        "fragOffset": 13,
+        "ttl": 8,
+        "protocol": 8,
+        "hdrChecksum": 16,
+        "srcAddr": 32,
+        "dstAddr": 32
+      }
+    },
+    "custom_iot": {
+      "fields": {
+        "device_id": 16,
+        "payload_type": 8,
+        "timestamp": 32
+      }
+    }
+  },
+  "parsers": {
+    "Parser": {
+      "parse_states": [
+        {
+          "name": "start",
+          "transitions": [
+            {
+              "condition": {
+                "value": "0x0800",
+                "mask": "0xffff"
+              },
+              "next_state": "parse_ipv4",
+              "on": "hdr.ethernet.ethType"
+            }
+          ]
+        },
+        {
+          "name": "parse_ipv4",
+          "extract": ["ipv4"],
+          "transitions": [
+            {
+              "condition": {
+                "value": "0xFD",
+                "mask": "0xFF"
+              },
+              "next_state": "parse_custom_iot",
+              "on": "hdr.ipv4.protocol"
+            }
+          ]
+        },
+        {
+          "name": "parse_custom_iot",
+          "extract": ["custom_iot"],
+          "transitions": [
+            {
+              "next_state": "accept"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "actions": {
+    "ipv4_forward": {
+      "parameters": [
+        {
+          "name": "dst_mac",
+          "bitwidth": 48
+        },
+        {
+          "name": "port",
+          "bitwidth": 9
+        }
+      ]
+    },
+    "drop": {
+      "parameters": []
+    }
+  },
+  "metadata": {
+    "do_disagg": {
+      "bitwidth": 1
+    }
+  }
+}
