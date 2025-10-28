@@ -10,7 +10,7 @@ cd "$(dirname "$0")"
 
 # Compile P4 program
 echo "Compiling P4 program..."
-p4c --target bmv2 --arch v1model   --p4runtime-files $P4INFO -o $JSON $P4SRC
+p4c --target bmv2 --arch v1model --p4runtime-files $P4INFO -o $JSON $P4SRC
 
 # Launch BMv2 switch
 echo "Starting BMv2 switch with gRPC..."
