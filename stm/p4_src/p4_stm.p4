@@ -1,14 +1,8 @@
-// File: p4_stm.p4
-
-// This file implements the P4 program for the Stateful Traffic Monitoring (STM) module of the LBTMA framework
-
-#include <core.p4>
-#include <v1model.p4>
-
+// Define standard headers (Ethernet, IPv4, TCP)
 header ethernet_t {
     bit<48> dstAddr;
     bit<48> srcAddr;
-    bit<16> ethType;
+    bit<16> etherType;
 }
 
 header ipv4_t {
@@ -29,98 +23,153 @@ header ipv4_t {
 header tcp_t {
     bit<16> srcPort;
     bit<16> dstPort;
+    bit<32> seqNo;
+    bit<32> ackNo;
+    bit<4>  dataOffset;
+    bit<6>  reserved;
+    bit<6>  flags;
+    bit<16> window;
+    bit<16> checksum;
+    bit<16> urgentPtr;
 }
 
-struct headers {
-    ethernet_t ethernet;
-    ipv4_t     ipv4;
-    tcp_t      tcp;
+header udp_t {
+    bit<16> srcPort;
+    bit<16> dstPort;
+    bit<16> length;
+    bit<16> checksum;
 }
-
-struct metadata {
-    bit<1> alert;
+struct metadata_t {
     bit<32> flow_id;
-    bit<16> pkt_len;
-    bit<1> is_fragment;
-    bit<8>  diffserv;
-    bit<8>  protocol;
+    bit<32> packet_size;
+    bit<64> timestamp;
 }
 
-parser MyParser(packet_in pkt,
-                out headers hdr,
-                inout metadata meta,
-                inout standard_metadata_t standard_metadata) {
+parser MyParser(packet_in packet,
+                out headers_t hdr,
+                inout metadata_t meta,
+                inout standard_metadata_t standard_meta) {
     state start {
-        pkt.extract(hdr.ethernet);
-        transition select(hdr.ethernet.ethType) {
-            0x0800: parse_ipv4;
+        transition parse_ethernet;
+    }
+
+    state parse_ethernet {
+        packet.extract(hdr.ethernet);
+        transition select(hdr.ethernet.etherType) {
+            0x0800: parse_ipv4; // IPv4
             default: accept;
         }
     }
 
     state parse_ipv4 {
-        pkt.extract(hdr.ipv4);
-        meta.diffserv = hdr.ipv4.diffserv;
-        meta.protocol = hdr.ipv4.protocol;
-        meta.pkt_len = hdr.ipv4.totalLen;
-        meta.flow_id = hdr.ipv4.srcAddr ^ hdr.ipv4.dstAddr ^ hdr.ipv4.protocol;
-        meta.is_fragment = hdr.ipv4.fragOffset != 0;
+        packet.extract(hdr.ipv4);
         transition select(hdr.ipv4.protocol) {
-            6: parse_tcp;
+            6: parse_tcp; // TCP
+            17: parse_udp; // UDP
             default: accept;
         }
     }
 
     state parse_tcp {
-        pkt.extract(hdr.tcp);
+        packet.extract(hdr.tcp);
+        transition accept;
+    }
+
+    state parse_udp {
+        packet.extract(hdr.udp);
         transition accept;
     }
 }
 
-control MyIngress(inout headers hdr,
-                  inout metadata meta,
-                  inout standard_metadata_t standard_metadata) {
+// Define a state table to store flow information
+table state_table {
+    key = {
+        hdr.ipv4.srcAddr : exact;
+        hdr.ipv4.dstAddr : exact;
+        hdr.ipv4.protocol : exact;
+        hdr.tcp.srcPort : exact;
+        hdr.tcp.dstPort : exact;
+    }
+    actions = {
+        update_state_table;
+        create_new_entry;
+    }
+    size = 1024;
+    default_action = create_new_entry;
+}
 
-    // Stateful traffic stats
-    register<bit<32>>(1024) flow_byte_count;
-    register<bit<32>>(1024) flow_pkt_count;
+// Action to update an existing entry in the state table
+action update_state_table(bit<32> flow_id, bit<32> packet_size, bit<64> timestamp) {
+    // Update flow details, such as packet count and timestamp
+    // Example: Increment packet count
+    register_flow_count[flow_id] += 1;
+    register_last_seen[flow_id] = timestamp;
+}
 
+// Action to create a new entry in the state table
+action create_new_entry() {
+    bit<32> flow_id = hash(hdr.ipv4.srcAddr, hdr.ipv4.dstAddr, hdr.ipv4.protocol);
+    register_flow_count[flow_id] = 1;
+    register_last_seen[flow_id] = meta.timestamp;
+}
+control IngressControl(inout headers_t hdr,
+                       inout metadata_t meta,
+                       inout standard_metadata_t standard_meta) {
     apply {
-        bit<32> index = meta.flow_id % 1024;
-        bit<32> prev_bytes;
-        bit<32> prev_pkts;
+        // Extract flow features (source/destination IP, packet size, etc.)
+        meta.packet_size = standard_meta.ingress_port;
+        meta.timestamp = standard_meta.ingress_global_timestamp;
 
-        flow_byte_count.read(prev_bytes, index);
-        flow_pkt_count.read(prev_pkts, index);
-
-        flow_byte_count.write(index, prev_bytes + meta.pkt_len);
-        flow_pkt_count.write(index, prev_pkts + 1);
-
-        if (meta.diffserv > 40 || meta.is_fragment == 1) {
-            meta.alert = 1;
-        } else {
-            meta.alert = 0;
-        }
-
-        if (meta.alert == 1) {
-            standard_metadata.egress_spec = 2; // critical channel
-        } else {
-            standard_metadata.egress_spec = 1; // routine channel
+        // Perform match-action using the state table
+        if (hdr.ipv4.isValid() && hdr.tcp.isValid()) {
+            state_table.apply();
         }
     }
 }
-
-control MyEgress(...) {
-    apply { }
-}
-
-control MyDeparser(packet_out pkt,
-                   in headers hdr) {
+control EgressControl(inout headers_t hdr,
+                      inout metadata_t meta,
+                      inout standard_metadata_t standard_meta) {
     apply {
-        pkt.emit(hdr.ethernet);
-        pkt.emit(hdr.ipv4);
-        pkt.emit(hdr.tcp);
+        // Additional egress processing logic can be added here
     }
 }
+control Deparser(packet_out packet,
+                 in headers_t hdr) {
+    apply {
+        packet.emit(hdr.ethernet);
+        if (hdr.ipv4.isValid()) {
+            packet.emit(hdr.ipv4);
+        }
+        if (hdr.tcp.isValid()) {
+            packet.emit(hdr.tcp);
+        } else if (hdr.udp.isValid()) {
+            packet.emit(hdr.udp);
+        }
+    }
+}
+control MyPipeline(inout headers_t hdr,
+                   inout metadata_t meta,
+                   inout standard_metadata_t standard_meta) {
+    MyParser() parser;
+    IngressControl() ingress;
+    EgressControl() egress;
+    Deparser() deparser;
 
-V1Switch(MyParser(), MyIngress(), MyEgress(), MyDeparser()) main;
+    apply {
+        parser.apply();
+        ingress.apply();
+        egress.apply();
+        deparser.apply();
+    }
+}
+package MySwitch(IngressControl ingress,
+                 EgressControl egress,
+                 MyParser parser,
+                 Deparser deparser) {
+    parser parser;
+    control ingress;
+    control egress;
+    deparser deparser;
+}
+
+MySwitch() main;
