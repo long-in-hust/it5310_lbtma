@@ -2,6 +2,9 @@
 P4-DLBS Module: Distributed Load Balancing with Enhanced Weighted Round Robin (P4-EWRR)
 */
 
+#include <core.p4>
+#include <v1model.p4>
+
 /* Define headers */
 header ethernet_t {
     bit<48> dstAddr;

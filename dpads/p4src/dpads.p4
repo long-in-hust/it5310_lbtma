@@ -1,3 +1,6 @@
+#include <core.p4>
+#include <v1model.p4>
+
 // Define the headers for Ethernet, IPv4, and UDP (assuming UDP traffic for IoT devices)
 header ethernet_t {
     bit<48> dst_addr;

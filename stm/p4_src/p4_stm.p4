@@ -1,3 +1,6 @@
+#include <core.p4>
+#include <v1model.p4>
+
 // Define standard headers (Ethernet, IPv4, TCP)
 header ethernet_t {
     bit<48> dstAddr;
