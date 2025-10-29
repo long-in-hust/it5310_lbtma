@@ -1,181 +1,130 @@
-/*
- * dpads.p4 - Complete P4-DPADS: Distributed Packet Aggregation and Disaggregation System
- * Language: P4_16 (BMv2 v1model architecture)
- */
-
-#include <core.p4>
-
-/* ================= HEADER DEFINITIONS ================= */
-
+// Define the headers for Ethernet, IPv4, and UDP (assuming UDP traffic for IoT devices)
 header ethernet_t {
-    bit<48> dstAddr;
-    bit<48> srcAddr;
-    bit<16> etherType;
+    bit<48> dst_addr;
+    bit<48> src_addr;
+    bit<16> eth_type;
 }
+
 
 header ipv4_t {
     bit<4>  version;
     bit<4>  ihl;
     bit<8>  diffserv;
-    bit<16> totalLen;
+    bit<16> total_len;
     bit<16> identification;
     bit<3>  flags;
-    bit<13> fragOffset;
+    bit<13> frag_offset;
     bit<8>  ttl;
     bit<8>  protocol;
-    bit<16> hdrChecksum;
-    bit<32> srcAddr;
-    bit<32> dstAddr;
+    bit<16> hdr_checksum;
+    bit<32> src_addr;
+    bit<32> dst_addr;
 }
 
-header custom_iot_t {
-    bit<8> device_id;
-    bit<8> payload_type;
-    bit<16> payload_len;
-    bit<32> timestamp;
-}
-
-/* ================= METADATA & STRUCT DEFINITIONS ================= */
-
-header dpads_meta_t {
-    bit<8> agg_id;
-    bit<8> pkt_count;
-    bit<1> do_disagg;
-}
-
-struct metadata {
-    dpads_meta_t dpads_meta;
+header udp_t {
+    bit<16> src_port;
+    bit<16> dst_port;
+    bit<16> length;
+    bit<16> checksum;
 }
 
 struct headers {
-    ethernet_t ethernet;
-    ipv4_t     ipv4;
-    custom_iot_t custom;
+    ethernet_t   eth;
+    ipv4_t       ipv4;
+    udp_t        udp;
 }
 
-/* ================= PARSER ================= */
 
-parser ParserImpl(packet_in packet,
-                  out headers hdr,
-                  inout metadata meta,
-                  inout standard_metadata_t standard_metadata) {
-
-    state start {
-        packet.extract(hdr.ethernet);
-        transition select(hdr.ethernet.etherType) {
-            0x0800: parse_ipv4;
-            default: accept;
-        }
-    }
-
-    state parse_ipv4 {
-        packet.extract(hdr.ipv4);
-        transition parse_custom;
-    }
-
-    state parse_custom {
-        packet.extract(hdr.custom);
-        transition accept;
-    }
+struct metadata {
+    // Metadata variables for packet processing
+    bit<32> pkt_count;
+    bit<32> agg_pkt;        // Aggregated packet payload
+    bit<32> disagg_pkt;     // Disaggregated packet payload
+    bit<32> disagg_enabled; // Disaggregation status
+    bit<32> pkt_threshold;  // Threshold for aggregation
 }
 
-/* ================= REGISTERS ================= */
 
-register<bit<8>>(1) pkt_count_reg;
+// Registers for storing states
+register<bit<32>>(pkt_count_reg, 1);
+register<bit<32>>(agg_pkt_reg, 1);
+register<bit<32>>(disagg_pkt_reg, 1);
+register<bit<1>>(disagg_enabled_reg, 1);
+register<bit<32>>(pkt_threshold_reg, 1); // Set this based on the aggregation threshold
 
-/* ================= ACTIONS ================= */
 
-action set_disaggregation() {
-    meta.dpads_meta.do_disagg = 1;
-}
-
-action reset_packet_count() {
-    pkt_count_reg.write(0, 0);
-}
-
-action increment_pkt_count() {
-    bit<8> count;
-    pkt_count_reg.read(count, 0);
-    count = count + 1;
-    pkt_count_reg.write(0, count);
-    meta.dpads_meta.pkt_count = count;
-
-    if (count >= 5) {
-        set_disaggregation();
-    }
-}
-
-action forward(bit<9> port) {
-    standard_metadata.egress_spec = port;
-}
-
-action drop() {
-    mark_to_drop();
-}
-
-/* ================= TABLES ================= */
-
-table aggregation_control {
-    actions = {
-        increment_pkt_count;
-        reset_packet_count;
-        drop;
-    }
-    size = 1;
-    default_action = increment_pkt_count();
-}
-
-table forwarding_table {
-    key = {
-        hdr.ipv4.dstAddr: exact;
-    }
-    actions = {
-        forward;
-        drop;
-    }
-    size = 1024;
-    default_action = drop();
-}
-
-/* ================= CONTROL BLOCKS ================= */
-
-control IngressImpl(inout headers hdr,
-                    inout metadata meta,
-                    inout standard_metadata_t standard_metadata) {
-
+// Standard control blocks for ingress and egress pipelines
+control Ingress(headers hdr, metadata meta, inout standard_metadata_t std_meta) {
     apply {
-        aggregation_control.apply();
-        forwarding_table.apply();
-    }
-}
+        // Packet Ingress: Parse Ethernet and IPv4 headers, then proceed to check for disaggregation or aggregation
+        if (hdr.ipv4.isValid()) {
+            // Check if disaggregation is enabled
+            if (disagg_enabled_reg.read(0) == 1) {
+                // Disaggregation phase
+                meta.pkt_count = pkt_count_reg.read(0);
+                meta.disagg_pkt = hdr.udp.length; // Assuming UDP payload as IoT packet content
 
-control EgressImpl(inout headers hdr,
-                   inout metadata meta,
-                   inout standard_metadata_t standard_metadata) {
-    apply {
-        if (meta.dpads_meta.do_disagg == 1) {
-            // Simple disaggregation logic placeholder
-            // Disaggregate by replicating payload (real implementation in external logic)
-            meta.dpads_meta.do_disagg = 0; // reset flag
+                // Forward disaggregated packets
+                disagg_pkt_reg.write(0, meta.disagg_pkt);
+                pkt_count_reg.write(0, 0); // Reset packet count
+                disagg_enabled_reg.write(0, 0); // Disable disaggregation for next cycle
+            } else {
+                // Aggregation phase
+                meta.pkt_count = pkt_count_reg.read(0) + 1;
+                agg_pkt_reg.write(0, hdr.udp.length); // Accumulate IoT payloads into agg_pkt register
+
+                // Check if packet count reached threshold
+                if (meta.pkt_count >= pkt_threshold_reg.read(0)) {
+                    // Perform aggregation operations
+                    disagg_enabled_reg.write(0, 1); // Enable disaggregation after aggregation
+                    pkt_count_reg.write(0, 0); // Reset packet count after aggregation
+                } else {
+                    pkt_count_reg.write(0, meta.pkt_count); // Update packet count
+                }
+            }
+        } else {
+            // Drop packet if headers are invalid
+            std_meta.drop = 1;
         }
     }
 }
 
-control VerifyChecksumImpl(inout headers hdr, inout metadata meta) {
-    apply { }
-}
 
-control ComputeChecksumImpl(inout headers  hdr, inout metadata meta) {
-    apply { }
-}
-
-control DeparserImpl(packet_out packet,
-                     in headers hdr) {
+control Egress(headers hdr, metadata meta, inout standard_metadata_t std_meta) {
     apply {
-        packet.emit(hdr.ethernet);
-        packet.emit(hdr.ipv4);
-        packet.emit(hdr.custom);
+        // Packet Egress: Process and forward the aggregated or disaggregated packet
+        // Handle any response packets from server and forward to the next DPADS node
     }
+}
+
+control VerifyChecksum(headers hdr, inout metadata meta) {
+    apply { }
+}
+
+control ComputeChecksum(headers hdr, inout metadata meta) {
+    apply { }
+}
+
+
+// Pipeline processing block
+control MyIngressPipeline {
+    apply {
+        VerifyChecksum();
+        Ingress();
+        ComputeChecksum();
+    }
+}
+
+control MyEgressPipeline {
+    apply {
+        Egress();
+    }
+}
+
+// Main switch pipeline
+pipeline main {
+    MyIngressPipeline();
+    MyEgressPipeline();
 }
 
 /* ================= MAIN PACKAGE ================= */
