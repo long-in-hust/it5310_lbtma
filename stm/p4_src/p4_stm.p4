@@ -42,6 +42,14 @@ header udp_t {
     bit<16> length;
     bit<16> checksum;
 }
+
+struct headers_t {
+  ethernet_t ethernet;
+  ipv4_t ipv4;
+  udp_t udp;
+  tcp_t tcp;
+} 
+
 struct metadata_t {
     bit<32> flow_id;
     bit<32> packet_size;
