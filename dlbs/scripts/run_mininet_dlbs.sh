@@ -9,6 +9,7 @@ mkdir -p ../build
 echo "Compiling p4_dlbs.p4..."
 p4c --target bmv2 --arch v1model --std p4-16 -o ../build/p4_dlbs.json ../p4src/p4_dlbs.p4
 
+echo "Generating switch"
 sudo simple_switch --log-console --thrift-port 9090 ../build/.json
 
 echo "Launching Mininet topology..."
