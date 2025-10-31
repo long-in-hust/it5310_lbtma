@@ -18,6 +18,9 @@ p4c --target bmv2 --arch v1model --p4runtime-files $P4INFO --std p4-16 -o $JSON 
 echo "Starting BMv2 switch with gRPC..."
 simple_switch_grpc --device-id 0 --log-console -i 0@veth0 -i 1@veth1 $JSON_IMMEDIATE &
 
+# Debug command:
+# simple_switch_grpc --device-id 0 --log-console -i 0@veth0 -i 1@veth1 config/p4_stm.json/p4_stm.json
+
 sleep 2
 
 # Launch controller (Python gRPC)
