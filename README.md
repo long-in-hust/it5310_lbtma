@@ -52,3 +52,7 @@ Disable IPv6 on the interfaces, so that the Linux kernel will not automatically 
 sudo sysctl net.ipv6.conf.veth0.disable_ipv6=1
 sudo sysctl net.ipv6.conf.veth1.disable_ipv6=1
 ```
+
+### Run the p4runtime_lib library in Python3:
+
+Get it from here: https://github.com/p4lang/tutorials/blob/master/utils/p4runtime_lib
