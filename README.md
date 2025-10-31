@@ -42,6 +42,6 @@ sudo ip link add veth0 type veth peer name veth1
 Turn the interfaces on:
 
 ```
-ip link set dev veth0 up
-ip link set dev veth1 up
+sudo ip link set dev veth0 up
+sudo link set dev veth1 up
 ```
