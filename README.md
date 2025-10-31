@@ -49,6 +49,6 @@ sudo ip link set dev veth1 up
 Disable IPv6 on the interfaces, so that the Linux kernel will not automatically send IPv6 MDNS, Router Solicitation, and Multicast Listener Report packets on the interface, which can make P4 program debugging more confusing.
 
 ```
-sysctl net.ipv6.conf.veth0.disable_ipv6=1
-sysctl net.ipv6.conf.veth1.disable_ipv6=1
+sudo sysctl net.ipv6.conf.veth0.disable_ipv6=1
+sudo sysctl net.ipv6.conf.veth1.disable_ipv6=1
 ```
