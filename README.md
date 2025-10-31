@@ -42,9 +42,11 @@ sudo ip link add veth0 type veth peer name veth1
 Set the namespaces and turn them on:
 
 ```
+sudo ip netns add bm0
 sudo ip link set veth0 netns bm0
 sudo ip netns exec bm0 ip link set dev veth0 up
 
+sudo ip netns add bm1
 sudo ip link set veth1 netns bm1
 sudo ip netns exec bm1 ip link set dev veth1 up
 ```
