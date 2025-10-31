@@ -51,19 +51,10 @@ struct headers_t {
 } 
 
 struct metadata_t {
-    bit<32> flow_id;
+    bit<11> flow_id;
     bit<32> packet_size;
-    bit<64> timestamp;
+    bit<48> timestamp;
 }
-
-extern Register<T> {
-    Register(bit<16> size);
-    T read(bit<16> index);
-    void write(bit<16> index, T value);
-}
-
-register<bit<16>>(256) register_flow_count;
-register<bit<64>>(256) register_last_seen;
 
 parser MyParser(packet_in packet,
                 out headers_t hdr,
@@ -101,10 +92,37 @@ parser MyParser(packet_in packet,
     }
 }
 
+control MyVerifyChecksum(inout headers_t hdr, inout metadata_t meta) {
+    apply { }
+}
+
 control IngressControl(inout headers_t hdr,
                        inout metadata_t meta,
                        inout standard_metadata_t standard_meta) {
     
+    register<bit<16>>(2048) register_flow_count;
+    register<bit<48>>(2048) register_last_seen;
+
+    // We use meta.flow_id (calculated in the apply block) as the index.
+    action update_state_table() {
+        // P4_16 requires .read() and .write() methods
+        // 1. Read the current count
+        bit<16> current_count;
+        register_flow_count.read(current_count, (bit<32>)meta.flow_id);
+        // 2. Write the incremented count
+        register_flow_count.write((bit<32>)meta.flow_id, current_count + 1);
+        // 3. Write the new timestamp
+        register_last_seen.write((bit<32>)meta.flow_id, meta.timestamp);
+    }
+
+    // Action to create a new entry.
+    action create_new_entry() {
+        // Set initial count to 1
+        register_flow_count.write((bit<32>)meta.flow_id, 1);
+        // Set initial timestamp
+        register_last_seen.write((bit<32>)meta.flow_id, meta.timestamp);
+    }
+
     table state_table {
         key = {
             hdr.ipv4.srcAddr : exact;
@@ -120,25 +138,10 @@ control IngressControl(inout headers_t hdr,
         size = 1024;
         default_action = create_new_entry;
     }
-
-    // Action to update an existing entry in the state table
-    action update_state_table(bit<32> flow_id, bit<32> packet_size, bit<64> timestamp) {
-        // Update flow details, such as packet count and timestamp
-        // Example: Increment packet count
-        register_flow_count[flow_id] = register_flow_count[flow_id] + 1;
-        register_last_seen[flow_id] = timestamp;
-    }
-
-    // Action to create a new entry in the state table
-    action create_new_entry() {
-        bit<32> flow_id = hash(hdr.ipv4.srcAddr, hdr.ipv4.dstAddr, hdr.ipv4.protocol);
-        register_flow_count[flow_id] = 1;
-        register_last_seen[flow_id] = meta.timestamp;
-    }
     
     apply {
         // Extract flow features (source/destination IP, packet size, etc.)
-        meta.packet_size = standard_meta.ingress_port;
+        meta.packet_size = standard_meta.packet_length;
         meta.timestamp = standard_meta.ingress_global_timestamp;
 
         // Perform match-action using the state table
@@ -147,6 +150,7 @@ control IngressControl(inout headers_t hdr,
         }
     }
 }
+
 control EgressControl(inout headers_t hdr,
                       inout metadata_t meta,
                       inout standard_metadata_t standard_meta) {
@@ -154,24 +158,35 @@ control EgressControl(inout headers_t hdr,
         // Additional egress processing logic can be added here
     }
 }
+
+control MyComputeChecksum(inout headers_t hdr, inout metadata_t meta) {
+    apply { }
+}
+
 control MyDeparser(packet_out packet,
                  in headers_t hdr) {
     apply {
         packet.emit(hdr.ethernet);
-        if (hdr.ipv4.isValid()) {
-            packet.emit(hdr.ipv4);
-        }
-        if (hdr.tcp.isValid()) {
-            packet.emit(hdr.tcp);
-        } else if (hdr.udp.isValid()) {
-            packet.emit(hdr.udp);
-        }
+        // if (hdr.ipv4.isValid()) {
+        //     packet.emit(hdr.ipv4);
+        // }
+        // if (hdr.tcp.isValid()) {
+        //     packet.emit(hdr.tcp);
+        // } else if (hdr.udp.isValid()) {
+        //     packet.emit(hdr.udp);
+        // }
+        packet.emit(hdr.ethernet);
+        packet.emit(hdr.ipv4); 
+        packet.emit(hdr.tcp);
+        packet.emit(hdr.udp);
     }
 }
 
 V1Switch(
     MyParser(),
+    MyVerifyChecksum(),
     IngressControl(),
     EgressControl(),
+    MyComputeChecksum(),
     MyDeparser()
 ) main;

@@ -3,6 +3,7 @@
 # Set paths
 P4SRC=../p4_src/p4_stm.p4
 JSON=../config/p4_stm.json
+JSON_IMMEDIATE=../config/p4_stm.json/p4_stm.json
 P4INFO=../config/p4_stm.p4info.txt
 
 # Change directory to that containing the script
@@ -15,8 +16,7 @@ p4c --target bmv2 --arch v1model --p4runtime-files $P4INFO --std p4-16 -o $JSON 
 
 # Launch BMv2 switch
 echo "Starting BMv2 switch with gRPC..."
-simple_switch_grpc --device-id 0 --log-console -i 0@veth0 -i 1@veth1 $JSON &
-sudo simple_switch --log-console --thrift-port 9090 p4_stm.json &
+simple_switch_grpc --device-id 0 --log-console -i 0@veth0 -i 1@veth1 $JSON_IMMEDIATE &
 
 sleep 2
 
