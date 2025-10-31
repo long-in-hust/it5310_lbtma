@@ -43,5 +43,5 @@ Turn the interfaces on:
 
 ```
 sudo ip link set dev veth0 up
-sudo link set dev veth1 up
+sudo ip link set dev veth1 up
 ```
