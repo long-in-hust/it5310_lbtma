@@ -2,7 +2,7 @@
   "devices": {
     "device:spine1": {
       "basic": {
-        "managementAddress": "grpc://10.0.1.132:50051?device_id=0",
+        "managementAddress": "grpc://10.0.1.132:9559?device_id=0",
         "driver": "bmv2",
         "pipeconf": "org.onosproject.pipelines.basic",
         "locType": "grid",
