@@ -16,10 +16,10 @@ p4c --target bmv2 --arch v1model --p4runtime-files $P4INFO --std p4-16 -o $JSON 
 
 # Launch BMv2 switch - May run this after the topology command
 echo "Starting BMv2 switch with gRPC..."
-simple_switch_grpc --device-id 0 --log-console -i 1@s1-eth1 -i 2@s1-eth2 $JSON_IMMEDIATE &
+simple_switch_grpc --device-id 0 --log-console -i 1@s1-eth1 -i 2@s1-eth2 $JSON_IMMEDIATE -- --grpc-server-addr 0.0.0.0:9559 --cpu-port 255 &
 
 # Debug command:
-# sudo simple_switch_grpc --grpc_port 50051 --device-id 0 --log-console -i 1@s1-eth1 -i 2@s1-eth2 config/p4_stm.json/p4_stm.json
+# sudo simple_switch_grpc  --device-id 0 --log-console -i 1@s1-eth1 -i 2@s1-eth2 config/p4_stm.json -- --grpc-server-addr 0.0.0.0:9559 --cpu-port 255
 
 sleep 2
 
