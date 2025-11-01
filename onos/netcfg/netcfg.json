@@ -1,0 +1,62 @@
+{
+  "devices": {
+    "device:spine1": {
+      "basic": {
+        "managementAddress": "grpc://10.0.1.132:50051?device_id=0",
+        "driver": "bmv2",
+        "pipeconf": "p4-tutorial-pipeconf",
+        "locType": "grid",
+        "gridX": 400,
+        "gridY": 400
+      }
+    }
+  },
+  "ports": {
+    "device:spine1/1": {
+      "interfaces": [
+        {
+          "name": "s1-eth1",
+          "ips": ["10.0.1.10/24"]
+        }
+      ]
+    },
+    "device:spine1/2": {
+      "interfaces": [
+        {
+          "name": "s1-eth2",
+          "ips": ["10.0.2.10/24"]
+        }
+      ]
+    }
+  },
+  "hosts": {
+    "00:00:00:00:00:01/None": {
+      "basic": {
+        "name": "h1",
+        "locType": "grid",
+        "gridX": 100,
+        "gridY": 700,
+        "ips": [
+          "10.0.1.1"
+        ],
+        "locations": [
+          "device:spine1/1"
+        ]
+      }
+    },
+    "00:00:00:00:00:02/None": {
+      "basic": {
+        "name": "h2",
+        "locType": "grid",
+        "gridX": 100,
+        "gridY": 800,
+        "ips": [
+          "10.0.2.2"
+        ],
+        "locations": [
+          "device:spine1/2"
+        ]
+      }
+    }
+  }
+}

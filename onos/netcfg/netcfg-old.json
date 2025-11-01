@@ -1,0 +1,57 @@
+{
+  "devices": {
+    "device:spine1": {
+      "basic": {
+        "managementAddress": "grpc://10.0.1.132:50051?device_id=0",
+        "driver": "bmv2",
+        "pipeconf": "org.onosproject.p4tutorial.pipeconf",
+        "locType": "grid",
+        "gridX": 400,
+        "gridY": 400
+      },
+      "fabricDeviceConfig": {
+        "myStationMac": "00:bb:00:00:00:01",
+        "mySid": "3:201:2::",
+        "isSpine": true
+      }
+    }
+  },
+  "ports": {
+    "device:spine1/1": {
+      "interfaces": [
+        {
+          "name": "s1-eth1",
+          "ips": ["10.0.0.1/24"],
+          "vlan-untagged": 10
+        }
+      ]
+    },
+    "device:spine1/2": {
+      "interfaces": [
+        {
+          "name": "s1-eth2",
+          "ips": ["10.0.1.1/24"],
+          "vlan-untagged": 20
+        }
+      ]
+    }
+  },
+  "hosts": {
+    "00:00:00:00:00:1A/None": {
+      "basic": {
+        "name": "h1",
+        "locType": "grid",
+        "gridX": 100,
+        "gridY": 700
+      }
+    },
+    "00:00:00:00:00:1B/None": {
+      "basic": {
+        "name": "h2",
+        "locType": "grid",
+        "gridX": 100,
+        "gridY": 800
+      }
+    }
+  }
+}

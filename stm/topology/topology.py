@@ -6,13 +6,25 @@ from mininet.node import RemoteController
 from mininet.link import TCLink
 from mininet.cli import CLI
 from mininet.log import setLogLevel
+from p4utils.mininetlib.node import P4Switch
+
+class SimpleP4Switch(P4Switch):
+    def __init__(self, name, p4_src, **kwargs):
+        super(SimpleP4Switch, self).__init__(name, p4_src="../p4_src/p4_stm.p4", **kwargs)
 
 class STMTopo(Topo):
     def build(self):
         h1 = self.addHost('h1', ip='10.0.1.1/24')
         h2 = self.addHost('h2', ip='10.0.2.2/24')
 
-        s1 = self.addSwitch('s1')
+        s1 = self.addSwitch('s1', 
+                           cls=SimpleP4Switch, # Replace with your P4 switch class
+                           device_id=0,
+                           p4_src="../p4_src/p4_stm.p4", 
+                           json_path="../config/p4_stm.json",
+                           pipeconf="p4-tutorial-pipeconf",
+                           thrift_port=9090,
+                           grpc_port=50051)
 
         self.addLink(h1, s1, cls=TCLink, bw=10, delay='5ms')
         self.addLink(h2, s1, cls=TCLink, bw=10, delay='5ms')

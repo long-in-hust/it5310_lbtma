@@ -1,6 +1,8 @@
 #include <core.p4>
 #include <v1model.p4>
 
+#define CPU_PORT 255
+
 // Define standard headers (Ethernet, IPv4, TCP)
 header ethernet_t {
     bit<48> dstAddr;
@@ -43,11 +45,25 @@ header udp_t {
     bit<16> checksum;
 }
 
+@controller_header("packet_in")
+header cpu_in_header_t {
+    bit<9> ingress_port;
+    bit<7> _pad;
+}
+
+@controller_header("packet_out")
+header cpu_out_header_t {
+    bit<9> egress_port;
+    bit<7> _pad;
+}
+
 struct headers_t {
   ethernet_t ethernet;
   ipv4_t ipv4;
   udp_t udp;
   tcp_t tcp;
+  cpu_in_header_t cpu_in;
+  cpu_out_header_t cpu_out;
 } 
 
 struct metadata_t {
@@ -60,7 +76,16 @@ parser MyParser(packet_in packet,
                 out headers_t hdr,
                 inout metadata_t meta,
                 inout standard_metadata_t standard_meta) {
+
     state start {
+        transition select(standard_meta.ingress_port) {
+            CPU_PORT: parse_packet_out;
+            default: parse_ethernet;
+        }
+    }
+
+    state parse_packet_out {
+        packet.extract(hdr.cpu_out);
         transition parse_ethernet;
     }
 
@@ -144,6 +169,18 @@ control IngressControl(inout headers_t hdr,
         meta.packet_size = standard_meta.packet_length;
         meta.timestamp = standard_meta.ingress_global_timestamp;
 
+        if (hdr.cpu_out.isValid()) {
+            // Implement logic such that if this is a packet-out from the
+            // controller:
+            // 1. Set the packet egress port to that found in the cpu_out header
+            // 2. Remove (set invalid) the cpu_out header
+            // 3. Exit the pipeline here (no need to go through other tables
+
+            standard_meta.egress_spec = hdr.cpu_out.egress_port;
+            hdr.cpu_out.setInvalid();
+            exit;
+        }
+
         // Perform match-action using the state table
         if (hdr.ipv4.isValid() && hdr.tcp.isValid()) {
             state_table.apply();
@@ -155,7 +192,19 @@ control EgressControl(inout headers_t hdr,
                       inout metadata_t meta,
                       inout standard_metadata_t standard_meta) {
     apply {
-        // Additional egress processing logic can be added here
+        if (standard_meta.egress_port == CPU_PORT) {
+            // *** TODO EXERCISE 4
+            // Implement logic such that if the packet is to be forwarded to the
+            // CPU port, e.g., if in ingress we matched on the ACL table with
+            // action send/clone_to_cpu...
+            // 1. Set cpu_in header as valid
+            // 2. Set the cpu_in.ingress_port field to the original packet's
+            //    ingress port (standard_meta.ingress_port).
+
+            hdr.cpu_in.setValid();
+            hdr.cpu_in.ingress_port = standard_meta.ingress_port;
+            exit;
+        }
     }
 }
 
@@ -166,15 +215,8 @@ control MyComputeChecksum(inout headers_t hdr, inout metadata_t meta) {
 control MyDeparser(packet_out packet,
                  in headers_t hdr) {
     apply {
+        packet.emit(hdr.cpu_in);
         packet.emit(hdr.ethernet);
-        // if (hdr.ipv4.isValid()) {
-        //     packet.emit(hdr.ipv4);
-        // }
-        // if (hdr.tcp.isValid()) {
-        //     packet.emit(hdr.tcp);
-        // } else if (hdr.udp.isValid()) {
-        //     packet.emit(hdr.udp);
-        // }
         packet.emit(hdr.ethernet);
         packet.emit(hdr.ipv4); 
         packet.emit(hdr.tcp);

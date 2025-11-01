@@ -1,0 +1,22 @@
+version: '3.8' # Specifies the Docker Compose file format version
+
+services:
+  onos-controller: # Defines a service named 'webapp'
+    container_name: onos-1
+    restart: unless-stopped
+    image: onosproject/onos:latest
+    ports:
+      - 8181:8181
+      - 8101:8101
+      - 5005:5005
+      - 830:830
+      - 6653:6653
+    networks:
+      - onos-network
+
+    # environment:
+    #   - ONOS_APPS="drivers,onos-drivers-bmv2,onos-drivers-default,onos-apps-drivermatrix,onos-apps-faultmanagement,onos-providers-general,onos-providers-host,onos-providers-netconf,onos-providers-netcfghost,onos-providers-netcfglinks,onos-apps-test-netcfg-monitor,onos-web-gui2,onos-apps-inbandtelemetry,onos-apps-p4-tutorial-pipeconf,onos-drivers-p4runtime,onos-protocols-p4runtime,onos-providers-p4runtime,onos-apps-pathpainter,onos-drivers-stratum,onos-apps-yang,onos-apps-yang-gui,onos-drivers-gnmi,onos-protocols-gnmi,onos-drivers-gnoi,onos-protocols-gnoi,onos-protocols-grpc"
+
+networks: # Defines custom networks
+  onos-network:
+    driver: bridge # Specifies the network driver
