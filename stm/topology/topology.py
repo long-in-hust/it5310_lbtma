@@ -22,7 +22,7 @@ class STMTopo(Topo):
                            device_id=0,
                            p4_src="../p4_src/p4_stm.p4", 
                            json_path="../config/p4_stm.json",
-                           pipeconf="p4-tutorial-pipeconf",
+                           pipeconf="org.onosproject.pipelines.basic",
                            thrift_port=9090,
                            grpc_port=50051)
 

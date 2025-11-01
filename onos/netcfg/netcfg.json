@@ -4,7 +4,7 @@
       "basic": {
         "managementAddress": "grpc://10.0.1.132:50051?device_id=0",
         "driver": "bmv2",
-        "pipeconf": "p4-tutorial-pipeconf",
+        "pipeconf": "org.onosproject.pipelines.basic",
         "locType": "grid",
         "gridX": 400,
         "gridY": 400
