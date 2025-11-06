@@ -4,7 +4,7 @@ services:
   onos-controller: # Defines a service named 'webapp'
     container_name: onos-1
     restart: unless-stopped
-    image: onosproject/onos:latest
+    image: onosproject/onos:2.7.0
     ports:
       - 8181:8181
       - 8101:8101
