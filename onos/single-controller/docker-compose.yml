@@ -3,7 +3,7 @@ version: '3.8' # Specifies the Docker Compose file format version
 services:
   onos-controller: # Defines a service named 'webapp'
     container_name: onos-1
-    restart: unless-stopped
+    restart: always
     image: onosproject/onos:2.7.0
     ports:
       - 8181:8181
