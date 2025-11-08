@@ -1,3 +1,6 @@
+# proto-file: p4/config/v1/p4info.proto
+# proto-message: p4.config.v1.P4Info
+
 pkg_info {
   arch: "v1model"
 }
@@ -42,6 +45,9 @@ tables {
   }
   action_refs {
     id: 24341543
+  }
+  initial_default_action {
+    action_id: 24341543
   }
   size: 1024
 }

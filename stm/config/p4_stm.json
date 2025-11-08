@@ -50,8 +50,33 @@
       ]
     },
     {
-      "name" : "ipv4_t",
+      "name" : "vlan_tag_t",
       "id" : 3,
+      "fields" : [
+        ["pcp", 3, false],
+        ["dei", 1, false],
+        ["vid", 12, false],
+        ["nextEtherType", 16, false]
+      ]
+    },
+    {
+      "name" : "arp_t",
+      "id" : 4,
+      "fields" : [
+        ["htype", 16, false],
+        ["ptype", 16, false],
+        ["hlen", 8, false],
+        ["plen", 8, false],
+        ["opcode", 16, false],
+        ["srcHwAddr", 48, false],
+        ["srcProtAddr", 32, false],
+        ["dstHwAddr", 48, false],
+        ["dstProtAddr", 32, false]
+      ]
+    },
+    {
+      "name" : "ipv4_t",
+      "id" : 5,
       "fields" : [
         ["version", 4, false],
         ["ihl", 4, false],
@@ -68,8 +93,18 @@
       ]
     },
     {
+      "name" : "icmp_t",
+      "id" : 6,
+      "fields" : [
+        ["type", 8, false],
+        ["code", 8, false],
+        ["checksum", 16, false],
+        ["rest_of_header", 32, false]
+      ]
+    },
+    {
       "name" : "udp_t",
-      "id" : 4,
+      "id" : 7,
       "fields" : [
         ["srcPort", 16, false],
         ["dstPort", 16, false],
@@ -79,7 +114,7 @@
     },
     {
       "name" : "tcp_t",
-      "id" : 5,
+      "id" : 8,
       "fields" : [
         ["srcPort", 16, false],
         ["dstPort", 16, false],
@@ -95,7 +130,7 @@
     },
     {
       "name" : "cpu_in_header_t",
-      "id" : 6,
+      "id" : 9,
       "fields" : [
         ["ingress_port", 9, false],
         ["_pad", 7, false]
@@ -103,7 +138,7 @@
     },
     {
       "name" : "cpu_out_header_t",
-      "id" : 7,
+      "id" : 10,
       "fields" : [
         ["egress_port", 9, false],
         ["_pad", 7, false]
@@ -133,36 +168,57 @@
       "pi_omit" : true
     },
     {
-      "name" : "ipv4",
+      "name" : "vlan",
       "id" : 3,
+      "header_type" : "vlan_tag_t",
+      "metadata" : false,
+      "pi_omit" : true
+    },
+    {
+      "name" : "arp",
+      "id" : 4,
+      "header_type" : "arp_t",
+      "metadata" : false,
+      "pi_omit" : true
+    },
+    {
+      "name" : "ipv4",
+      "id" : 5,
       "header_type" : "ipv4_t",
       "metadata" : false,
       "pi_omit" : true
     },
     {
+      "name" : "icmp",
+      "id" : 6,
+      "header_type" : "icmp_t",
+      "metadata" : false,
+      "pi_omit" : true
+    },
+    {
       "name" : "udp",
-      "id" : 4,
+      "id" : 7,
       "header_type" : "udp_t",
       "metadata" : false,
       "pi_omit" : true
     },
     {
       "name" : "tcp",
-      "id" : 5,
+      "id" : 8,
       "header_type" : "tcp_t",
       "metadata" : false,
       "pi_omit" : true
     },
     {
       "name" : "cpu_in",
-      "id" : 6,
+      "id" : 9,
       "header_type" : "cpu_in_header_t",
       "metadata" : false,
       "pi_omit" : true
     },
     {
       "name" : "cpu_out",
-      "id" : 7,
+      "id" : 10,
       "header_type" : "cpu_out_header_t",
       "metadata" : false,
       "pi_omit" : true
@@ -260,6 +316,18 @@
               "next_state" : "parse_ipv4"
             },
             {
+              "type" : "hexstr",
+              "value" : "0x8100",
+              "mask" : null,
+              "next_state" : "parse_vlan"
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x0806",
+              "mask" : null,
+              "next_state" : "parse_arp"
+            },
+            {
               "type" : "default",
               "value" : null,
               "mask" : null,
@@ -274,8 +342,49 @@
           ]
         },
         {
-          "name" : "parse_ipv4",
+          "name" : "parse_vlan",
           "id" : 3,
+          "parser_ops" : [
+            {
+              "parameters" : [
+                {
+                  "type" : "regular",
+                  "value" : "vlan"
+                }
+              ],
+              "op" : "extract"
+            }
+          ],
+          "transitions" : [
+            {
+              "type" : "hexstr",
+              "value" : "0x0800",
+              "mask" : null,
+              "next_state" : "parse_ipv4"
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x0806",
+              "mask" : null,
+              "next_state" : "parse_arp"
+            },
+            {
+              "type" : "default",
+              "value" : null,
+              "mask" : null,
+              "next_state" : null
+            }
+          ],
+          "transition_key" : [
+            {
+              "type" : "field",
+              "value" : ["vlan", "nextEtherType"]
+            }
+          ]
+        },
+        {
+          "name" : "parse_ipv4",
+          "id" : 4,
           "parser_ops" : [
             {
               "parameters" : [
@@ -301,6 +410,12 @@
               "next_state" : "parse_udp"
             },
             {
+              "type" : "hexstr",
+              "value" : "0x01",
+              "mask" : null,
+              "next_state" : "parse_icmp"
+            },
+            {
               "type" : "default",
               "value" : null,
               "mask" : null,
@@ -315,8 +430,56 @@
           ]
         },
         {
+          "name" : "parse_icmp",
+          "id" : 5,
+          "parser_ops" : [
+            {
+              "parameters" : [
+                {
+                  "type" : "regular",
+                  "value" : "icmp"
+                }
+              ],
+              "op" : "extract"
+            }
+          ],
+          "transitions" : [
+            {
+              "type" : "default",
+              "value" : null,
+              "mask" : null,
+              "next_state" : null
+            }
+          ],
+          "transition_key" : []
+        },
+        {
+          "name" : "parse_arp",
+          "id" : 6,
+          "parser_ops" : [
+            {
+              "parameters" : [
+                {
+                  "type" : "regular",
+                  "value" : "arp"
+                }
+              ],
+              "op" : "extract"
+            }
+          ],
+          "transitions" : [
+            {
+              "type" : "default",
+              "value" : null,
+              "mask" : null,
+              "next_state" : null
+            }
+          ],
+          "transition_key" : []
+        },
+        {
           "name" : "parse_tcp",
-          "id" : 4,
+          "id" : 7,
           "parser_ops" : [
             {
               "parameters" : [
@@ -340,7 +503,7 @@
         },
         {
           "name" : "parse_udp",
-          "id" : 5,
+          "id" : 8,
           "parser_ops" : [
             {
               "parameters" : [
@@ -372,11 +535,11 @@
       "id" : 0,
       "source_info" : {
         "filename" : "p4_src/p4_stm.p4",
-        "line" : 215,
+        "line" : 267,
         "column" : 8,
         "source_fragment" : "MyDeparser"
       },
-      "order" : ["cpu_in", "ethernet", "ethernet", "ipv4", "tcp", "udp"],
+      "order" : ["cpu_in", "ethernet", "ethernet", "ipv4", "tcp", "udp", "icmp", "arp"],
       "primitives" : []
     }
   ],
@@ -388,7 +551,7 @@
       "id" : 0,
       "source_info" : {
         "filename" : "p4_src/p4_stm.p4",
-        "line" : 128,
+        "line" : 180,
         "column" : 28,
         "source_fragment" : "register_flow_count"
       },
@@ -400,7 +563,7 @@
       "id" : 1,
       "source_info" : {
         "filename" : "p4_src/p4_stm.p4",
-        "line" : 129,
+        "line" : 181,
         "column" : 28,
         "source_fragment" : "register_last_seen"
       },
@@ -443,7 +606,7 @@
           ],
           "source_info" : {
             "filename" : "p4_src/p4_stm.p4",
-            "line" : 136,
+            "line" : 188,
             "column" : 48,
             "source_fragment" : "(bit<32>)meta.flow_id"
           }
@@ -466,7 +629,7 @@
           ],
           "source_info" : {
             "filename" : "p4_src/p4_stm.p4",
-            "line" : 136,
+            "line" : 188,
             "column" : 8,
             "source_fragment" : "register_flow_count.read(current_count, (bit<32>)meta.flow_id)"
           }
@@ -498,7 +661,7 @@
           ],
           "source_info" : {
             "filename" : "p4_src/p4_stm.p4",
-            "line" : 138,
+            "line" : 190,
             "column" : 34,
             "source_fragment" : "(bit<32>)meta.flow_id"
           }
@@ -540,7 +703,7 @@
           ],
           "source_info" : {
             "filename" : "p4_src/p4_stm.p4",
-            "line" : 138,
+            "line" : 190,
             "column" : 57,
             "source_fragment" : "current_count + 1"
           }
@@ -563,7 +726,7 @@
           ],
           "source_info" : {
             "filename" : "p4_src/p4_stm.p4",
-            "line" : 138,
+            "line" : 190,
             "column" : 8,
             "source_fragment" : "register_flow_count.write((bit<32>)meta.flow_id, current_count + 1)"
           }
@@ -595,7 +758,7 @@
           ],
           "source_info" : {
             "filename" : "p4_src/p4_stm.p4",
-            "line" : 140,
+            "line" : 192,
             "column" : 33,
             "source_fragment" : "(bit<32>)meta.flow_id"
           }
@@ -618,7 +781,7 @@
           ],
           "source_info" : {
             "filename" : "p4_src/p4_stm.p4",
-            "line" : 140,
+            "line" : 192,
             "column" : 8,
             "source_fragment" : "register_last_seen.write((bit<32>)meta.flow_id, meta.timestamp)"
           }
@@ -657,7 +820,7 @@
           ],
           "source_info" : {
             "filename" : "p4_src/p4_stm.p4",
-            "line" : 146,
+            "line" : 198,
             "column" : 34,
             "source_fragment" : "(bit<32>)meta.flow_id"
           }
@@ -680,7 +843,7 @@
           ],
           "source_info" : {
             "filename" : "p4_src/p4_stm.p4",
-            "line" : 146,
+            "line" : 198,
             "column" : 8,
             "source_fragment" : "register_flow_count.write((bit<32>)meta.flow_id, 1)"
           }
@@ -712,7 +875,7 @@
           ],
           "source_info" : {
             "filename" : "p4_src/p4_stm.p4",
-            "line" : 148,
+            "line" : 200,
             "column" : 33,
             "source_fragment" : "(bit<32>)meta.flow_id"
           }
@@ -735,7 +898,7 @@
           ],
           "source_info" : {
             "filename" : "p4_src/p4_stm.p4",
-            "line" : 148,
+            "line" : 200,
             "column" : 8,
             "source_fragment" : "register_last_seen.write((bit<32>)meta.flow_id, meta.timestamp)"
           }
@@ -743,7 +906,7 @@
       ]
     },
     {
-      "name" : "p4_stm179",
+      "name" : "p4_stm231",
       "id" : 2,
       "runtime_data" : [],
       "primitives" : [
@@ -761,7 +924,7 @@
           ],
           "source_info" : {
             "filename" : "p4_src/p4_stm.p4",
-            "line" : 179,
+            "line" : 231,
             "column" : 12,
             "source_fragment" : "standard_meta.egress_spec = hdr.cpu_out.egress_port"
           }
@@ -776,7 +939,7 @@
           ],
           "source_info" : {
             "filename" : "p4_src/p4_stm.p4",
-            "line" : 180,
+            "line" : 232,
             "column" : 12,
             "source_fragment" : "hdr.cpu_out.setInvalid()"
           }
@@ -786,7 +949,7 @@
           "parameters" : [],
           "source_info" : {
             "filename" : "p4_src/p4_stm.p4",
-            "line" : 181,
+            "line" : 233,
             "column" : 12,
             "source_fragment" : "exit"
           }
@@ -794,7 +957,7 @@
       ]
     },
     {
-      "name" : "p4_stm169",
+      "name" : "p4_stm221",
       "id" : 3,
       "runtime_data" : [],
       "primitives" : [
@@ -812,7 +975,7 @@
           ],
           "source_info" : {
             "filename" : "p4_src/p4_stm.p4",
-            "line" : 169,
+            "line" : 221,
             "column" : 8,
             "source_fragment" : "meta.packet_size = standard_meta.packet_length"
           }
@@ -831,7 +994,7 @@
           ],
           "source_info" : {
             "filename" : "p4_src/p4_stm.p4",
-            "line" : 170,
+            "line" : 222,
             "column" : 8,
             "source_fragment" : "meta.timestamp = standard_meta.ingress_global_timestamp"
           }
@@ -839,7 +1002,7 @@
       ]
     },
     {
-      "name" : "p4_stm204",
+      "name" : "p4_stm256",
       "id" : 4,
       "runtime_data" : [],
       "primitives" : [
@@ -853,7 +1016,7 @@
           ],
           "source_info" : {
             "filename" : "p4_src/p4_stm.p4",
-            "line" : 204,
+            "line" : 256,
             "column" : 12,
             "source_fragment" : "hdr.cpu_in.setValid()"
           }
@@ -872,7 +1035,7 @@
           ],
           "source_info" : {
             "filename" : "p4_src/p4_stm.p4",
-            "line" : 205,
+            "line" : 257,
             "column" : 12,
             "source_fragment" : "hdr.cpu_in.ingress_port = standard_meta.ingress_port"
           }
@@ -882,7 +1045,7 @@
           "parameters" : [],
           "source_info" : {
             "filename" : "p4_src/p4_stm.p4",
-            "line" : 206,
+            "line" : 258,
             "column" : 12,
             "source_fragment" : "exit"
           }
@@ -896,18 +1059,18 @@
       "id" : 0,
       "source_info" : {
         "filename" : "p4_src/p4_stm.p4",
-        "line" : 124,
+        "line" : 176,
         "column" : 8,
         "source_fragment" : "IngressControl"
       },
-      "init_table" : "tbl_p4_stm169",
+      "init_table" : "tbl_p4_stm221",
       "tables" : [
         {
-          "name" : "tbl_p4_stm169",
+          "name" : "tbl_p4_stm221",
           "id" : 0,
           "source_info" : {
             "filename" : "p4_src/p4_stm.p4",
-            "line" : 169,
+            "line" : 221,
             "column" : 25,
             "source_fragment" : "= standard_meta.packet_length; ..."
           },
@@ -919,10 +1082,10 @@
           "support_timeout" : false,
           "direct_meters" : null,
           "action_ids" : [3],
-          "actions" : ["p4_stm169"],
+          "actions" : ["p4_stm221"],
           "base_default_next" : "node_3",
           "next_tables" : {
-            "p4_stm169" : "node_3"
+            "p4_stm221" : "node_3"
           },
           "default_entry" : {
             "action_id" : 3,
@@ -932,11 +1095,11 @@
           }
         },
         {
-          "name" : "tbl_p4_stm179",
+          "name" : "tbl_p4_stm231",
           "id" : 1,
           "source_info" : {
             "filename" : "p4_src/p4_stm.p4",
-            "line" : 179,
+            "line" : 231,
             "column" : 38,
             "source_fragment" : "= hdr.cpu_out.egress_port; ..."
           },
@@ -948,10 +1111,10 @@
           "support_timeout" : false,
           "direct_meters" : null,
           "action_ids" : [2],
-          "actions" : ["p4_stm179"],
-          "base_default_next" : "node_5",
+          "actions" : ["p4_stm231"],
+          "base_default_next" : null,
           "next_tables" : {
-            "p4_stm179" : "node_5"
+            "p4_stm231" : null
           },
           "default_entry" : {
             "action_id" : 2,
@@ -965,7 +1128,7 @@
           "id" : 2,
           "source_info" : {
             "filename" : "p4_src/p4_stm.p4",
-            "line" : 151,
+            "line" : 203,
             "column" : 10,
             "source_fragment" : "state_table"
           },
@@ -1029,7 +1192,7 @@
           "id" : 0,
           "source_info" : {
             "filename" : "p4_src/p4_stm.p4",
-            "line" : 172,
+            "line" : 224,
             "column" : 12,
             "source_fragment" : "hdr.cpu_out.isValid()"
           },
@@ -1044,7 +1207,7 @@
               }
             }
           },
-          "true_next" : "tbl_p4_stm179",
+          "true_next" : "tbl_p4_stm231",
           "false_next" : "node_5"
         },
         {
@@ -1052,7 +1215,7 @@
           "id" : 1,
           "source_info" : {
             "filename" : "p4_src/p4_stm.p4",
-            "line" : 185,
+            "line" : 237,
             "column" : 12,
             "source_fragment" : "hdr.ipv4.isValid() && hdr.tcp.isValid()"
           },
@@ -1094,18 +1257,18 @@
       "id" : 1,
       "source_info" : {
         "filename" : "p4_src/p4_stm.p4",
-        "line" : 191,
+        "line" : 243,
         "column" : 8,
         "source_fragment" : "EgressControl"
       },
       "init_table" : "node_9",
       "tables" : [
         {
-          "name" : "tbl_p4_stm204",
+          "name" : "tbl_p4_stm256",
           "id" : 3,
           "source_info" : {
             "filename" : "p4_src/p4_stm.p4",
-            "line" : 204,
+            "line" : 256,
             "column" : 12,
             "source_fragment" : "hdr.cpu_in.setValid(); ..."
           },
@@ -1117,10 +1280,10 @@
           "support_timeout" : false,
           "direct_meters" : null,
           "action_ids" : [4],
-          "actions" : ["p4_stm204"],
+          "actions" : ["p4_stm256"],
           "base_default_next" : null,
           "next_tables" : {
-            "p4_stm204" : null
+            "p4_stm256" : null
           },
           "default_entry" : {
             "action_id" : 4,
@@ -1137,7 +1300,7 @@
           "id" : 2,
           "source_info" : {
             "filename" : "p4_src/p4_stm.p4",
-            "line" : 195,
+            "line" : 247,
             "column" : 12,
             "source_fragment" : "standard_meta.egress_port == 255"
           },
@@ -1156,7 +1319,7 @@
             }
           },
           "false_next" : null,
-          "true_next" : "tbl_p4_stm204"
+          "true_next" : "tbl_p4_stm256"
         }
       ]
     }
