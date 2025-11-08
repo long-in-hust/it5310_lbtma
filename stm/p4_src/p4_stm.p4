@@ -3,10 +3,14 @@
 
 #define CPU_PORT 255
 
+typedef bit<9>  egressSpec_t;
+typedef bit<48> macAddr_t;
+typedef bit<32> ip4Addr_t;
+
 // Define standard headers (Ethernet, IPv4, TCP)
 header ethernet_t {
-    bit<48> dstAddr;
-    bit<48> srcAddr;
+    macAddr_t dstAddr;
+    macAddr_t srcAddr;
     bit<16> etherType;
 }
 
@@ -40,8 +44,8 @@ header ipv4_t {
     bit<8>  ttl;
     bit<8>  protocol;
     bit<16> hdrChecksum;
-    bit<32> srcAddr;
-    bit<32> dstAddr;
+    ip4Addr_t srcAddr;
+    ip4Addr_t dstAddr;
 }
 
 header ipv6_t {
@@ -254,6 +258,31 @@ control IngressControl(inout headers_t hdr,
         size = 1024;
         default_action = create_new_entry;
     }
+
+    // forwarding
+    action drop() {
+        mark_to_drop(standard_meta);
+    }
+
+    action ipv4_forward(macAddr_t dstAddr, egressSpec_t port) {
+        standard_meta.egress_spec = port;
+        hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
+        hdr.ethernet.dstAddr = dstAddr;
+        hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
+    }
+
+    table ipv4_lpm {
+        key = {
+            hdr.ipv4.dstAddr: lpm;
+        }
+        actions = {
+            ipv4_forward;
+            drop;
+            NoAction;
+        }
+        size = 1024;
+        default_action = drop();
+    }
     
     apply {
         // Extract flow features (source/destination IP, packet size, etc.)
@@ -273,8 +302,11 @@ control IngressControl(inout headers_t hdr,
         }
 
         // Perform match-action using the state table
-        if (hdr.ipv4.isValid() && hdr.tcp.isValid()) {
-            state_table.apply();
+        if (hdr.ipv4.isValid()) {
+            if (hdr.tcp.isValid()) {
+                state_table.apply();
+            }
+            ipv4_lpm.apply();
         }
     }
 }
@@ -282,6 +314,7 @@ control IngressControl(inout headers_t hdr,
 control EgressControl(inout headers_t hdr,
                       inout metadata_t meta,
                       inout standard_metadata_t standard_meta) {
+    
     apply {
         if (standard_meta.egress_port == CPU_PORT) {
             // *** TODO EXERCISE 4

@@ -52,6 +52,40 @@ tables {
   }
   size: 1024
 }
+tables {
+  preamble {
+    id: 45534105
+    name: "IngressControl.ipv4_lpm"
+    alias: "ipv4_lpm"
+  }
+  match_fields {
+    id: 1
+    name: "hdr.ipv4.dstAddr"
+    bitwidth: 32
+    match_type: LPM
+  }
+  action_refs {
+    id: 24193369
+  }
+  action_refs {
+    id: 23278147
+  }
+  action_refs {
+    id: 21257015
+  }
+  initial_default_action {
+    action_id: 23278147
+  }
+  size: 1024
+}
+actions {
+  preamble {
+    id: 21257015
+    name: "NoAction"
+    alias: "NoAction"
+    annotations: "@noWarn(\"unused\")"
+  }
+}
 actions {
   preamble {
     id: 20816381
@@ -64,6 +98,30 @@ actions {
     id: 24341543
     name: "IngressControl.create_new_entry"
     alias: "create_new_entry"
+  }
+}
+actions {
+  preamble {
+    id: 23278147
+    name: "IngressControl.drop"
+    alias: "drop"
+  }
+}
+actions {
+  preamble {
+    id: 24193369
+    name: "IngressControl.ipv4_forward"
+    alias: "ipv4_forward"
+  }
+  params {
+    id: 1
+    name: "dstAddr"
+    bitwidth: 48
+  }
+  params {
+    id: 2
+    name: "port"
+    bitwidth: 9
   }
 }
 controller_packet_metadata {
