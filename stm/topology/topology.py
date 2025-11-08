@@ -16,7 +16,6 @@ except ImportError:
 
 P4_JSON_FILE = '../config/p4_stm.json'
 P4_P4INFO_FILE = '../config/p4_stm.p4info.txt'
-NETCFG_FILE='../../onos/netcfg/netcfg.json'
 
 class STMTopo(Topo):
     def build(self):
@@ -29,7 +28,7 @@ class STMTopo(Topo):
                             p4info=P4_P4INFO_FILE,
                             grpcport=9559, # Example port
                             thriftport=10001,
-                            netcfg=NETCFG_FILE,
+                            pipeconf="org.onosproject.pipelines.p4stm",
                             device_id=0)
 
         self.addLink(h1, s1, cls=TCLink, bw=10, delay='5ms')
