@@ -29,7 +29,7 @@ class STMTopo(Topo):
                             grpcport=11001, # Example port
                             thriftport=10001,
                             pipeconf="org.onosproject.pipelines.p4stm",
-                            device_id=0)
+                            device_id=1)
 
         self.addLink(h1, s1, cls=TCLink, bw=10, delay='5ms')
         self.addLink(h2, s1, cls=TCLink, bw=10, delay='5ms')
