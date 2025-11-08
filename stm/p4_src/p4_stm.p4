@@ -10,6 +10,25 @@ header ethernet_t {
     bit<16> etherType;
 }
 
+header vlan_tag_t {
+    bit<3>  pcp;
+    bit<1>  dei;
+    bit<12> vid;
+    bit<16> nextEtherType; // This holds the *original* EtherType (e.g., 0x0800 for IPv4)
+}
+
+header arp_t {
+    bit<16> htype;
+    bit<16> ptype;
+    bit<8>  hlen;
+    bit<8>  plen;
+    bit<16> opcode;
+    bit<48> srcHwAddr;
+    bit<32> srcProtAddr;
+    bit<48> dstHwAddr;
+    bit<32> dstProtAddr;
+}
+
 header ipv4_t {
     bit<4>  version;
     bit<4>  ihl;
@@ -23,6 +42,13 @@ header ipv4_t {
     bit<16> hdrChecksum;
     bit<32> srcAddr;
     bit<32> dstAddr;
+}
+
+header icmp_t {
+    bit<8>  type;
+    bit<8>  code;
+    bit<16> checksum;
+    bit<32> rest_of_header; // Covers the 4-byte ID and Sequence Number fields
 }
 
 header tcp_t {
@@ -59,7 +85,10 @@ header cpu_out_header_t {
 
 struct headers_t {
   ethernet_t ethernet;
+  vlan_tag_t vlan;
+  arp_t arp;
   ipv4_t ipv4;
+  icmp_t icmp;
   udp_t udp;
   tcp_t tcp;
   cpu_in_header_t cpu_in;
@@ -93,6 +122,18 @@ parser MyParser(packet_in packet,
         packet.extract(hdr.ethernet);
         transition select(hdr.ethernet.etherType) {
             0x0800: parse_ipv4; // IPv4
+            0x8100: parse_vlan; // VLAN (802.1Q)
+            0x0806: parse_arp;  // ARP
+            default: accept;
+        }
+    }
+
+    state parse_vlan {
+        // nextEtherType is a field in the vlan_tag_t header you defined above
+        packet.extract(hdr.vlan);
+        transition select(hdr.vlan.nextEtherType) {
+            0x0800: parse_ipv4; // IPv4 *after* VLAN tag
+            0x0806: parse_arp;  // ARP *after* VLAN tag
             default: accept;
         }
     }
@@ -102,8 +143,19 @@ parser MyParser(packet_in packet,
         transition select(hdr.ipv4.protocol) {
             6: parse_tcp; // TCP
             17: parse_udp; // UDP
+            1: parse_icmp;
             default: accept;
         }
+    }
+
+    state parse_icmp {
+        packet.extract(hdr.icmp);
+        transition accept;
+    }
+
+    state parse_arp {
+        packet.extract(hdr.arp);
+        transition accept;
     }
 
     state parse_tcp {
@@ -221,6 +273,8 @@ control MyDeparser(packet_out packet,
         packet.emit(hdr.ipv4); 
         packet.emit(hdr.tcp);
         packet.emit(hdr.udp);
+        packet.emit(hdr.icmp);
+        packet.emit(hdr.arp);
     }
 }
 
