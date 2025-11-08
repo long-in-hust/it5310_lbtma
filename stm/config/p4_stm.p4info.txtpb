@@ -9,6 +9,7 @@ tables {
     id: 42346268
     name: "IngressControl.state_table"
     alias: "state_table"
+    annotations: "@default_only"
   }
   match_fields {
     id: 1

@@ -200,6 +200,7 @@ control IngressControl(inout headers_t hdr,
         register_last_seen.write((bit<32>)meta.flow_id, meta.timestamp);
     }
 
+    @default_only
     table state_table {
         key = {
             hdr.ipv4.srcAddr : exact;
