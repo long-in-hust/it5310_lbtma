@@ -22,11 +22,11 @@ class STMTopo(Topo):
         h1 = self.addHost('h1', ip='10.0.1.1/24')
         h2 = self.addHost('h2', ip='10.0.2.2/24')
 
-        s1 = self.addSwitch('s1', 
+        s1 = self.addSwitch('s1',
                             cls=P4Switch,
                             json_path=P4_JSON_FILE,
                             p4info=P4_P4INFO_FILE,
-                            grpcport=50001,
+                            grpcport=11001,
                             thriftport=10001,
                             pipeconf="org.onosproject.pipelines.p4stm",
                             device_id=1)
