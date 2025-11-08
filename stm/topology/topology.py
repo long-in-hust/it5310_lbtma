@@ -38,7 +38,7 @@ class STMTopo(Topo):
 def run():
     topo = STMTopo()
     net = Mininet(topo=topo, controller=None, autoSetMacs=True)
-    net.addController('c0', controller=RemoteController, ip='127.0.0.1', port=6653)
+    net.addController('c0', controller=RemoteController, ip='10.0.1.132', port=6653)
 
     net.start()
     print("\n--- Running Mininet CLI ---")
