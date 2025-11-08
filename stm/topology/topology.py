@@ -27,6 +27,7 @@ class STMTopo(Topo):
                             json_path=P4_JSON_FILE,
                             p4info=P4_P4INFO_FILE,
                             grpc_port=9559, # Example port
+                            thriftport=10001,
                             device_id=0)
 
         self.addLink(h1, s1, cls=TCLink, bw=10, delay='5ms')
