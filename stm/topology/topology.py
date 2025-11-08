@@ -7,6 +7,13 @@ from mininet.link import TCLink
 from mininet.cli import CLI
 from mininet.log import setLogLevel
 
+try:
+    from mn_wifi.bmv2 import P4Switch # A common name used in Mininet-WiFi examples
+except ImportError:
+    # Fallback if P4Switch isn't found, though it indicates a setup issue
+    print("FATAL: Cannot import P4Switch from mn_wifi.bmv2. Ensure Mininet-WiFi is properly installed with P4 support.")
+    class P4Switch: pass
+
 class STMTopo(Topo):
     def build(self):
         h1 = self.addHost('h1', ip='10.0.1.1/24')

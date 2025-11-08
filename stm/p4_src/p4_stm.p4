@@ -44,11 +44,30 @@ header ipv4_t {
     bit<32> dstAddr;
 }
 
+header ipv6_t {
+    bit<4>  version;
+    bit<8>  trafficClass;
+    bit<20> flowLabel;
+    bit<16> payloadLength;
+    bit<8>  nextHdr;
+    bit<8>  hopLimit;
+    bit<128> srcAddr;
+    bit<128> dstAddr;
+}
+
 header icmp_t {
     bit<8>  type;
     bit<8>  code;
     bit<16> checksum;
-    bit<32> rest_of_header; // Covers the 4-byte ID and Sequence Number fields
+    bit<32> body; // Covers the 4-byte ID and Sequence Number fields
+}
+
+
+header icmpv6_t {
+    bit<8>  type;
+    bit<8>  code;
+    bit<16> checksum;
+    bit<32> body; // Covers the 4-byte ID and Sequence Number fields
 }
 
 header tcp_t {
@@ -88,7 +107,9 @@ struct headers_t {
   vlan_tag_t vlan;
   arp_t arp;
   ipv4_t ipv4;
+  ipv6_t ipv6;
   icmp_t icmp;
+  icmpv6_t icmpv6;
   udp_t udp;
   tcp_t tcp;
   cpu_in_header_t cpu_in;
@@ -124,6 +145,7 @@ parser MyParser(packet_in packet,
             0x0800: parse_ipv4; // IPv4
             0x8100: parse_vlan; // VLAN (802.1Q)
             0x0806: parse_arp;  // ARP
+            0x86dd: parse_ipv6;
             default: accept;
         }
     }
@@ -134,6 +156,7 @@ parser MyParser(packet_in packet,
         transition select(hdr.vlan.nextEtherType) {
             0x0800: parse_ipv4; // IPv4 *after* VLAN tag
             0x0806: parse_arp;  // ARP *after* VLAN tag
+            0x86dd: parse_ipv6;
             default: accept;
         }
     }
@@ -141,15 +164,30 @@ parser MyParser(packet_in packet,
     state parse_ipv4 {
         packet.extract(hdr.ipv4);
         transition select(hdr.ipv4.protocol) {
+            6: parse_tcp;
+            17: parse_udp;
+            1: parse_icmp;
+            default: accept;
+        }
+    }
+
+    state parse_ipv6 {
+        packet.extract(hdr.ipv6);
+        transition select(hdr.ipv6.nextHdr) {
             6: parse_tcp; // TCP
             17: parse_udp; // UDP
-            1: parse_icmp;
+            58: parse_icmpv6;
             default: accept;
         }
     }
 
     state parse_icmp {
         packet.extract(hdr.icmp);
+        transition accept;
+    }
+
+    state parse_icmpv6 {
+        packet.extract(hdr.icmpv6);
         transition accept;
     }
 
