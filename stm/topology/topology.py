@@ -8,12 +8,11 @@ from mininet.cli import CLI
 from mininet.log import setLogLevel
 
 try:
-    from p4runtime_switch import P4RuntimeSwitch
+    from mn_wifi.bmv2 import P4Switch # Standard P4 Switch class in Mininet-WiFi
 except ImportError:
-    # Fallback/Error handling if the module is not in the path
-    print("FATAL: Cannot import P4RuntimeSwitch. Ensure the P4 environment is sourced.")
-    # Define a simple placeholder to prevent immediate crash, though topology will fail later
-    class P4RuntimeSwitch: pass
+    # If this still fails, your Mininet-WiFi install might be missing P4 support.
+    print("FATAL: Cannot import P4Switch from mn_wifi.bmv2. Check Mininet-WiFi P4 setup.")
+    class P4Switch: pass # Define a placeholder to prevent immediate crash
 
 P4_JSON_FILE = '../config/p4_stm.json'
 P4_P4INFO_FILE = '../config/p4_stm.p4info.txt'
@@ -24,7 +23,7 @@ class STMTopo(Topo):
         h2 = self.addHost('h2', ip='10.0.2.2/24')
 
         s1 = self.addSwitch('s1', 
-                            cls=P4RuntimeSwitch, 
+                            cls=P4Switch,
                             json_path=P4_JSON_FILE,
                             p4info=P4_P4INFO_FILE,
                             grpc_port=9559, # Example port
