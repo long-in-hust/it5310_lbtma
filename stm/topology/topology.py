@@ -19,8 +19,8 @@ P4_P4INFO_FILE = '../config/p4_stm.p4info.txt'
 
 class STMTopo(Topo):
     def build(self):
-        h1 = self.addHost('h1', ip='10.0.1.1/24')
-        h2 = self.addHost('h2', ip='10.0.2.2/24')
+        h1 = self.addHost('h1', ip='10.1.1.1/24')
+        h2 = self.addHost('h2', ip='10.1.2.2/24')
 
         s1 = self.addSwitch('s1',
                             cls=P4Switch,
