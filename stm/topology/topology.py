@@ -26,7 +26,7 @@ class STMTopo(Topo):
                             cls=P4Switch,
                             json_path=P4_JSON_FILE,
                             p4info=P4_P4INFO_FILE,
-                            grpcport=11001, # Example port
+                            grpcport=50001,
                             thriftport=10001,
                             pipeconf="org.onosproject.pipelines.p4stm",
                             device_id=1)
